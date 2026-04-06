@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Caravans</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+    background: #2c1810;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #game {
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .player-row {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .caravan {
+    flex: 1;
+    max-width: 280px;
+    height: 100%;
+    background: #fff;
+    border: 3px solid #333;
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.4s, border-color 0.3s, box-shadow 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 2px 3px 8px rgba(0,0,0,0.3);
+  }
+
+  .caravan.green {
+    background: #4caf50;
+    border-color: #2e7d32;
+  }
+
+  .caravan.active-turn {
+    border-color: #ff9800;
+    box-shadow: 0 0 15px rgba(255,152,0,0.6);
+  }
+
+  .caravan .value-center {
+    font-size: 3em;
+    font-weight: bold;
+    color: #222;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .caravan .value-center .val-left {
+    transform: rotate(180deg);
+    display: inline-block;
+  }
+
+  .caravan .value-center .val-pipe {
+    font-size: 0.8em;
+    opacity: 0.4;
+  }
+
+  .caravan .value-center .val-right {
+    transform: rotate(0deg);
+    display: inline-block;
+  }
+
+  .caravan.green .value-center,
+  .caravan.green .corner {
+    color: #fff;
+  }
+
+  .corner {
+    position: absolute;
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #222;
+    line-height: 1;
+  }
+
+  /* Top-left corner: readable for player 2 (top row) — upright */
+  .corner.top-left {
+    top: 8px; left: 10px;
+  }
+
+  /* Bottom-right corner: readable for player 1 (bottom row) — upright */
+  .corner.bottom-right {
+    bottom: 8px; right: 10px;
+  }
+
+  /* Player 2 row is rotated 180° so player 2 reads it from the other side */
+  .player-row.player2 {
+    flex-direction: row-reverse;
+  }
+  .player-row.player2 .caravan {
+    transform: rotate(180deg);
+  }
+
+  /* Turn indicator */
+  #turn-indicator {
+    text-align: center;
+    color: #e8d5b7;
+    font-size: 1.1em;
+    padding: 2px 0;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+    min-height: 28px;
+  }
+
+  /* Modal overlay for number/operation selection */
+  #modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal-overlay.visible { display: flex; }
+
+  #modal {
+    background: #3e2723;
+    border: 2px solid #8d6e63;
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    min-width: 340px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+
+  #modal.rotated {
+    transform: rotate(180deg);
+  }
+
+  #modal h3 {
+    color: #e8d5b7;
+    font-size: 1.3em;
+    margin-bottom: 4px;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .num-btn, .op-btn {
+    width: 52px; height: 52px;
+    border: 2px solid #8d6e63;
+    border-radius: 10px;
+    font-size: 1.3em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .num-btn {
+    background: #efebe9;
+    color: #3e2723;
+  }
+  .num-btn:active, .num-btn.selected {
+    background: #ff9800;
+    color: #fff;
+    border-color: #e65100;
+  }
+
+  .op-btn {
+    background: #5d4037;
+    color: #fff;
+    width: 80px;
+    font-size: 1.6em;
+  }
+  .op-btn:active, .op-btn.selected {
+    background: #ff9800;
+    border-color: #e65100;
+  }
+
+  #confirm-btn {
+    background: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 40px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    display: none;
+  }
+  #confirm-btn.visible { display: block; }
+  #confirm-btn:active { background: #388e3c; }
+
+  #cancel-btn {
+    background: transparent;
+    color: #8d6e63;
+    border: 1px solid #8d6e63;
+    border-radius: 10px;
+    padding: 8px 24px;
+    font-size: 1em;
+    cursor: pointer;
+  }
+
+  #error-msg {
+    color: #ef5350;
+    font-size: 1em;
+    font-weight: bold;
+    min-height: 1.2em;
+  }
+
+  /* Win overlay */
+  #win-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+  #win-overlay.visible { display: flex; }
+
+  #win-text {
+    color: #ffd54f;
+    font-size: 2.5em;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  #restart-btn {
+    background: #ff9800;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 50px;
+    font-size: 1.3em;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #restart-btn:active { background: #e65100; }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div class="player-row player2" id="row-player2"></div>
+  <div id="turn-indicator">Spieler 1 ist am Zug</div>
+  <div class="player-row player1" id="row-player1"></div>
+</div>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">Wert wählen</h3>
+    <div class="btn-row" id="number-btns"></div>
+    <div class="btn-row" id="op-btns"></div>
+    <div id="error-msg"></div>
+    <div class="btn-row">
+      <button id="confirm-btn">Bestätigen</button>
+      <button id="cancel-btn">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<div id="win-overlay">
+  <div id="win-text"></div>
+  <button id="restart-btn">Neues Spiel</button>
+</div>
+
+<script>
+const state = {
+  // values[player][caravan] — player 0 = bottom (Spieler 1), player 1 = top (Spieler 2)
+  values: [[0, 0, 0], [0, 0, 0]],
+  currentPlayer: 0, // 0 = Spieler 1 (bottom), 1 = Spieler 2 (top)
+  selectedNum: null,
+  selectedOp: null,
+  activeCaravan: null // { player, index }
+};
+
+function isGreen(val) {
+  return val >= 21 && val <= 26;
+}
+
+function renderCaravans() {
+  for (let p = 0; p < 2; p++) {
+    const rowId = p === 0 ? 'row-player1' : 'row-player2';
+    const row = document.getElementById(rowId);
+    row.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const val = state.values[p][i];
+      const card = document.createElement('div');
+      card.className = 'caravan';
+      if (isGreen(val)) card.classList.add('green');
+      if (state.currentPlayer === p) card.classList.add('active-turn');
+
+      card.innerHTML = `
+        <span class="corner top-left">${val}</span>
+        <span class="value-center">
+          <span class="val-left">${val}</span>
+          <span class="val-pipe">|</span>
+          <span class="val-right">${val}</span>
+        </span>
+        <span class="corner bottom-right">${val}</span>
+      `;
+
+      card.addEventListener('click', () => onCaravanTap(p, i));
+      row.appendChild(card);
+    }
+  }
+
+  const indicator = document.getElementById('turn-indicator');
+  indicator.textContent = `Spieler ${state.currentPlayer + 1} ist am Zug`;
+}
+
+function onCaravanTap(player, index) {
+  if (player !== state.currentPlayer) return;
+
+  state.activeCaravan = { player, index };
+  state.selectedNum = null;
+  state.selectedOp = null;
+
+  const modal = document.getElementById('modal');
+  modal.className = player === 1 ? 'rotated' : '';
+
+  document.getElementById('modal-title').textContent =
+    `Spieler ${player + 1} — Caravan ${index + 1} (aktuell: ${state.values[player][index]})`;
+  document.getElementById('error-msg').textContent = '';
+  document.getElementById('confirm-btn').classList.remove('visible');
+
+  // Number buttons
+  const numContainer = document.getElementById('number-btns');
+  numContainer.innerHTML = '';
+  for (let n = 1; n <= 10; n++) {
+    const btn = document.createElement('button');
+    btn.className = 'num-btn';
+    btn.textContent = n;
+    btn.addEventListener('click', () => selectNum(n));
+    numContainer.appendChild(btn);
+  }
+
+  // Operation buttons
+  const opContainer = document.getElementById('op-btns');
+  opContainer.innerHTML = '';
+  ['+', '−'].forEach(op => {
+    const btn = document.createElement('button');
+    btn.className = 'op-btn';
+    btn.textContent = op;
+    btn.addEventListener('click', () => selectOp(op === '+' ? 'add' : 'sub'));
+    opContainer.appendChild(btn);
+  });
+
+  document.getElementById('modal-overlay').classList.add('visible');
+}
+
+function selectNum(n) {
+  state.selectedNum = n;
+  document.querySelectorAll('.num-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.textContent) === n);
+  });
+  checkReady();
+}
+
+function selectOp(op) {
+  state.selectedOp = op;
+  const btns = document.querySelectorAll('.op-btn');
+  btns[0].classList.toggle('selected', op === 'add');
+  btns[1].classList.toggle('selected', op === 'sub');
+  checkReady();
+}
+
+function checkReady() {
+  const ready = state.selectedNum !== null && state.selectedOp !== null;
+  document.getElementById('confirm-btn').classList.toggle('visible', ready);
+  document.getElementById('error-msg').textContent = '';
+}
+
+document.getElementById('confirm-btn').addEventListener('click', () => {
+  const { player, index } = state.activeCaravan;
+  const current = state.values[player][index];
+  const delta = state.selectedOp === 'add' ? state.selectedNum : -state.selectedNum;
+  const newVal = current + delta;
+
+  if (newVal < 0) {
+    document.getElementById('error-msg').textContent =
+      `Fehler: ${current} − ${state.selectedNum} = ${newVal}. Wert darf nicht unter 0 fallen!`;
+    return;
+  }
+
+  state.values[player][index] = newVal;
+  closeModal();
+
+  // Check win condition
+  const winner = checkWinner();
+  if (winner !== null) {
+    showWin(winner);
+    return;
+  }
+
+  // Next player
+  state.currentPlayer = state.currentPlayer === 0 ? 1 : 0;
+  renderCaravans();
+});
+
+document.getElementById('cancel-btn').addEventListener('click', closeModal);
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('visible');
+  state.activeCaravan = null;
+  state.selectedNum = null;
+  state.selectedOp = null;
+  renderCaravans();
+}
+
+function checkWinner() {
+  // A player wins if they have at least 2 green caravans
+  // AND each of those green caravans has a higher value than the opposing caravan
+  for (let p = 0; p < 2; p++) {
+    const opp = 1 - p;
+    let winCount = 0;
+    for (let i = 0; i < 3; i++) {
+      if (isGreen(state.values[p][i]) && state.values[p][i] > state.values[opp][i]) {
+        winCount++;
+      }
+    }
+    if (winCount >= 2) return p;
+  }
+  return null;
+}
+
+function showWin(player) {
+  document.getElementById('win-text').textContent = `🎉 Spieler ${player + 1} gewinnt! 🎉`;
+  document.getElementById('win-overlay').classList.add('visible');
+}
+
+document.getElementById('restart-btn').addEventListener('click', () => {
+  state.values = [[0, 0, 0], [0, 0, 0]];
+  state.currentPlayer = 0;
+  document.getElementById('win-overlay').classList.remove('visible');
+  renderCaravans();
+});
+
+// Init
+renderCaravans();
+</script>
+
+</body>
+</html>
