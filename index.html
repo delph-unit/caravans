@@ -317,7 +317,6 @@ function renderCaravans() {
       const card = document.createElement('div');
       card.className = 'caravan';
       if (isGreen(val)) card.classList.add('green');
-      if (state.currentPlayer === p) card.classList.add('active-turn');
 
       card.innerHTML = `
         <span class="corner top-left">${val}</span>
@@ -335,12 +334,10 @@ function renderCaravans() {
   }
 
   const indicator = document.getElementById('turn-indicator');
-  indicator.textContent = `Spieler ${state.currentPlayer + 1} ist am Zug`;
+  indicator.textContent = `Spieler ${state.currentPlayer + 1} ist am Zug — jede Caravan antippbar`;
 }
 
 function onCaravanTap(player, index) {
-  if (player !== state.currentPlayer) return;
-
   state.activeCaravan = { player, index };
   state.selectedNum = null;
   state.selectedOp = null;
