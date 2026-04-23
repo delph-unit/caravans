@@ -342,37 +342,46 @@ function onCaravanTap(player, index) {
   state.selectedNum = null;
   state.selectedOp = null;
 
+  // Modal-Ausrichtung orientiert sich am Spieler am Zug
   const modal = document.getElementById('modal');
-  modal.className = player === 1 ? 'rotated' : '';
+  modal.className = state.currentPlayer === 1 ? 'rotated' : '';
 
   document.getElementById('modal-title').textContent =
     `Spieler ${player + 1} — Caravan ${index + 1} (aktuell: ${state.values[player][index]})`;
   document.getElementById('error-msg').textContent = '';
   document.getElementById('confirm-btn').classList.remove('visible');
 
-  // Number buttons
+  // Zuerst nur Operations-Buttons anzeigen
+  document.getElementById('number-btns').innerHTML = '';
+
+  const opContainer = document.getElementById('op-btns');
+  opContainer.innerHTML = '';
+  ['+', '−', '0'].forEach(op => {
+    const btn = document.createElement('button');
+    btn.className = 'op-btn';
+    btn.textContent = op;
+    if (op === '0') {
+      btn.addEventListener('click', () => resetDeck());
+    } else {
+      btn.addEventListener('click', () => selectOp(op === '+' ? 'add' : 'sub'));
+    }
+    opContainer.appendChild(btn);
+  });
+
+  document.getElementById('modal-overlay').classList.add('visible');
+}
+
+function renderNumberButtons() {
   const numContainer = document.getElementById('number-btns');
   numContainer.innerHTML = '';
-  for (let n = 1; n <= 10; n++) {
+  const max = state.selectedOp === 'add' ? 10 : 20;
+  for (let n = 1; n <= max; n++) {
     const btn = document.createElement('button');
     btn.className = 'num-btn';
     btn.textContent = n;
     btn.addEventListener('click', () => selectNum(n));
     numContainer.appendChild(btn);
   }
-
-  // Operation buttons
-  const opContainer = document.getElementById('op-btns');
-  opContainer.innerHTML = '';
-  ['+', '−'].forEach(op => {
-    const btn = document.createElement('button');
-    btn.className = 'op-btn';
-    btn.textContent = op;
-    btn.addEventListener('click', () => selectOp(op === '+' ? 'add' : 'sub'));
-    opContainer.appendChild(btn);
-  });
-
-  document.getElementById('modal-overlay').classList.add('visible');
 }
 
 function selectNum(n) {
@@ -385,10 +394,28 @@ function selectNum(n) {
 
 function selectOp(op) {
   state.selectedOp = op;
+  state.selectedNum = null;
   const btns = document.querySelectorAll('.op-btn');
   btns[0].classList.toggle('selected', op === 'add');
   btns[1].classList.toggle('selected', op === 'sub');
-  checkReady();
+  renderNumberButtons();
+  document.getElementById('confirm-btn').classList.remove('visible');
+  document.getElementById('error-msg').textContent = '';
+}
+
+function resetDeck() {
+  const { player, index } = state.activeCaravan;
+  state.values[player][index] = 0;
+  closeModal();
+
+  const winner = checkWinner();
+  if (winner !== null) {
+    showWin(winner);
+    return;
+  }
+
+  state.currentPlayer = state.currentPlayer === 0 ? 1 : 0;
+  renderCaravans();
 }
 
 function checkReady() {
