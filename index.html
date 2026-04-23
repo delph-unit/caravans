@@ -55,6 +55,11 @@
     border-color: #2e7d32;
   }
 
+  .caravan.red {
+    background: #e53935;
+    border-color: #b71c1c;
+  }
+
   .caravan.active-turn {
     border-color: #ff9800;
     box-shadow: 0 0 15px rgba(255,152,0,0.6);
@@ -85,7 +90,9 @@
   }
 
   .caravan.green .value-center,
-  .caravan.green .corner {
+  .caravan.green .corner,
+  .caravan.red .value-center,
+  .caravan.red .corner {
     color: #fff;
   }
 
@@ -307,6 +314,10 @@ function isGreen(val) {
   return val >= 21 && val <= 26;
 }
 
+function isRed(val) {
+  return val >= 27;
+}
+
 function renderCaravans() {
   for (let p = 0; p < 2; p++) {
     const rowId = p === 0 ? 'row-player1' : 'row-player2';
@@ -316,7 +327,10 @@ function renderCaravans() {
       const val = state.values[p][i];
       const card = document.createElement('div');
       card.className = 'caravan';
-      if (isGreen(val)) card.classList.add('green');
+      const oppVal = state.values[1 - p][i];
+      const tied = isGreen(val) && isGreen(oppVal) && val === oppVal;
+      if (isRed(val) || tied) card.classList.add('red');
+      else if (isGreen(val)) card.classList.add('green');
 
       card.innerHTML = `
         <span class="corner top-left">${val}</span>
